@@ -1,6 +1,8 @@
-import { useMiniKit, useAddFrame } from '@coinbase/onchainkit/minikit';
+'use client';
+import React from 'react';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEffect, useState } from 'react';
-import { useAccount, useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi';
+import { useAccount, useContractRead, useContractWrite, useTransaction } from 'wagmi';
 import { parseAbiItem } from 'viem';
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
@@ -16,7 +18,6 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const [hasMinted, setHasMinted] = useState<boolean>(false);
 
-  // Contract interactions
   const { data: mintStatus } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: parseAbiItem(contractABI[1]),
@@ -38,7 +39,7 @@ export default function Home() {
     functionName: 'mint',
   });
 
-  const { isLoading: isMinting, isSuccess: mintSuccess } = useWaitForTransaction({
+  const { isLoading: isMinting, isSuccess: mintSuccess } = useTransaction({
     hash: mintData?.hash,
   });
 
