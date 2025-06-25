@@ -3,6 +3,12 @@
 ## Background and Motivation
 Building a POAP (Proof of Attendance Protocol) application on Base using Base Minikit. This app will allow users to mint POAPs as proof of attending events/workshops. The POAP will be implemented as a Soulbound Token (SBT) with a limit of 1 per address, ensuring each attendee can only have one non-transferable token. The project needs to be completed within a 3-hour workshop timeframe, focusing on core functionality while leveraging Base Minikit's built-in features.
 
+## Workshop Details
+- Name: "BASE BATCHES 001 - HOMEBASE WORKSHOPS"
+- Type: Workshop Attendee Badge
+- Visual: Blue circular badge with Base home icon
+- Metadata Storage: On-chain
+
 ## Key Challenges and Analysis
 1. Time constraint (3 hours) - Need to focus on core functionality
 2. Integration with Base network and Base Minikit
@@ -39,23 +45,32 @@ Building a POAP (Proof of Attendance Protocol) application on Base using Base Mi
      - ERC721 contract modified for SBT functionality
      - One-per-address minting restriction
      - Non-transferable token implementation
+     - On-chain metadata storage
      - Events emitted for tracking
    - Key Features:
      - mintPOAP function with address check
      - Disabled transfer functions
-     - Event metadata storage
+     - Struct for workshop metadata:
+       ```solidity
+       struct WorkshopMetadata {
+           string name;
+           uint256 startDate;
+           uint256 endDate;
+       }
+       ```
      - Access control for minting
    - Contract Requirements:
      - Override transfer functions to prevent transfers
      - Mapping to track minted addresses
      - Check for existing tokens before minting
+     - Store workshop details on-chain
      - Emit events for minting and attempts
 
 ### Frontend Development (60 mins)
 1. Create basic UI components using Base Minikit
    - Success Criteria:
      - Working connect wallet button using MiniKitProvider
-     - Simple minting interface
+     - Simple minting interface with Base branding
      - Clear feedback for already-minted addresses
    - Components needed:
      - MiniKitProvider setup
@@ -63,6 +78,11 @@ Building a POAP (Proof of Attendance Protocol) application on Base using Base Mi
      - POAP minting button
      - Transaction status display
      - Already-minted status display
+   - Visual Elements:
+     - Base blue color scheme (#0052FF)
+     - Circular badge design
+     - Workshop details display
+     - Base home icon integration
 
 ### Integration & Testing (45 mins)
 1. Connect frontend with smart contract
@@ -71,16 +91,18 @@ Building a POAP (Proof of Attendance Protocol) application on Base using Base Mi
      - Error handling for already-minted addresses
      - Transaction feedback for users
      - Verification of non-transferability
+     - Correct display of on-chain metadata
    - Features:
      - Contract interaction through Base Minikit
      - Transaction status updates
      - Error message display
      - Minting status check
+     - Metadata retrieval and display
 
 ## Project Status Board
 - [ ] Project initialization with Base Minikit
-- [ ] Smart contract development with SBT functionality
-- [ ] Frontend setup with MiniKit components
+- [ ] Smart contract development with SBT functionality and on-chain metadata
+- [ ] Frontend setup with Base branding and MiniKit components
 - [ ] Contract deployment to Base testnet
 - [ ] Frontend-contract integration
 - [ ] Testing and verification of SBT constraints
@@ -102,4 +124,8 @@ No current requests
 - SBT Implementation:
   - Override transfer functions in ERC721
   - Implement one-per-address restriction
-  - Add clear error messages for transfer attempts 
+  - Add clear error messages for transfer attempts
+- Visual Implementation:
+  - Use Base brand colors (#0052FF)
+  - Implement circular badge design
+  - Include workshop metadata display 
