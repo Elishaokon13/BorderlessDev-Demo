@@ -1,30 +1,54 @@
 'use client';
-import React from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
-import { useEffect, useState } from 'react';
-import { useAccount, useContractRead, useContractWrite, useTransaction } from 'wagmi';
-import { parseAbi } from 'viem';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'w3m-button': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-    }
-  }
+import React, { useEffect, useState } from 'react';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useAccount, useContractRead, useContractWrite } from 'wagmi';
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}` | undefined;
+
+if (!CONTRACT_ADDRESS) {
+  throw new Error('NEXT_PUBLIC_CONTRACT_ADDRESS is not defined');
 }
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
+const contractABI = [
+  {
+    type: 'function',
+    name: 'mint',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'hasMinted',
+    stateMutability: 'view',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'getWorkshopDetails',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'name', type: 'string' },
+      { name: 'startDate', type: 'uint256' },
+      { name: 'endDate', type: 'uint256' },
+    ],
+  },
+] as const;
 
-type WorkshopDetails = readonly [string, bigint, bigint];
-
-const contractABI = parseAbi([
-  'function mint() external',
-  'function hasMinted(address) external view returns (bool)',
-  'function getWorkshopDetails() external view returns (tuple(string name, uint256 startDate, uint256 endDate))',
-]) as const;
+interface WorkshopDetails {
+  0: string; // name
+  1: bigint; // startDate
+  2: bigint; // endDate
+  name: string;
+  startDate: bigint;
+  endDate: bigint;
+}
 
 export default function Home() {
-  const { setFrameReady, isFrameReady } = useMiniKit();
+  const { setFrame, isReady: isFrameReady } = useMiniKit();
   const { address, isConnected } = useAccount();
   const [hasMinted, setHasMinted] = useState<boolean>(false);
 
@@ -32,68 +56,67 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'hasMinted',
-    args: address ? [address] : undefined,
+    args: [address],
+    enabled: isConnected && !!address,
   });
 
-  const { data: workshopDetails } = useContractRead<typeof contractABI, 'getWorkshopDetails'>({
+  const { data: workshopDetails } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'getWorkshopDetails',
-  });
+    enabled: true,
+  }) as { data: WorkshopDetails | undefined };
 
-  const { write: mint, data: mintData } = useContractWrite({
+  const { write: mint, isLoading: isMinting, data: mintData } = useContractWrite({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'mint',
   });
 
-  const { isLoading: isMinting, isSuccess: mintSuccess } = useTransaction({
-    hash: mintData?.hash,
-  });
-
   useEffect(() => {
     if (!isFrameReady) {
-      setFrameReady();
+      setFrameReady(true);
     }
   }, [isFrameReady, setFrameReady]);
 
   useEffect(() => {
     if (mintStatus !== undefined) {
-      setHasMinted(Boolean(mintStatus));
+      setHasMinted(mintStatus);
     }
   }, [mintStatus]);
 
   const handleMint = async () => {
     try {
-      mint?.();
+      await mint();
     } catch (error) {
       console.error('Error minting:', error);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-[#0052FF]">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
+    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-blue-600]">
+      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm space-y-8">
         <h1 className="text-4xl font-bold text-center text-white mb-8">
-          BASE BATCHES 001
+          BASEBALL BATCHES 001
         </h1>
-        <h2 className="text-2xl text-center text-white mb-12">
-          HOMEBASE WORKSHOPS
+        <h2 className="text-2xl font-semibold text-center text-white mb-12">
+          HOMEBATCH WORKSHOPS
         </h2>
 
         <div className="bg-white rounded-lg p-8 mb-8">
           <h3 className="text-xl font-semibold mb-4">Workshop Details</h3>
           {workshopDetails && (
             <div className="space-y-2">
-              <p>Name: {String(workshopDetails[0])}</p>
-              <p>Start Date: {new Date(Number(workshopDetails[1]) * 1000).toLocaleDateString()}</p>
-              <p>End Date: {new Date(Number(workshopDetails[2]) * 1000).toLocaleDateString()}</p>
+              <p>Name: {workshopDetails.name}</p>
+              <p>Start Date: {new Date(Number(workshopDetails.startDate) * 1000).toLocaleDateString()}</p>
+              <p>End Date: {new Date(Number(workshopDetails.endDate) * 1000).toLocaleDateString()}</p>
             </div>
           )}
         </div>
 
         <div className="flex flex-col items-center justify-center space-y-4">
           {!isConnected ? (
+            // @ts-ignore: Web3Modal button is a custom element
             <w3m-button />
           ) : hasMinted ? (
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded-md">
@@ -103,17 +126,16 @@ export default function Home() {
             <button
               onClick={handleMint}
               disabled={isMinting}
+              aria-label="Mint your POAP"
               className={`px-6 py-3 rounded-lg text-white font-semibold ${
-                isMinting
-                  ? 'bg-gray-500'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                isMinting ? 'bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
               {isMinting ? 'Minting...' : 'Mint POAP'}
             </button>
           )}
 
-          {mintSuccess && (
+          {mintData && (
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded-md">
               Successfully minted your POAP!
             </div>
