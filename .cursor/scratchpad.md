@@ -16,7 +16,7 @@ Building a POAP (Proof of Attendance Protocol) application on Base using Base Mi
 ### Metadata Structure (Stored On-chain)
 ```solidity
 struct WorkshopMetadata {
-    string workshopName;    // "BASE BATCHES 001"
+    string workshopName;    // "BUILD ON BASE CHALLENGE"
     uint256 startDate;     // Workshop start timestamp
     uint256 endDate;       // Workshop end timestamp
     string badgeType;      // "Workshop Attendee"
