@@ -53,9 +53,10 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const [hasMinted, setHasMinted] = useState<boolean>(false);
   const [justMinted, setJustMinted] = useState<boolean>(false);
+  const [testMode, setTestMode] = useState<boolean>(false);
   
   // Debug logging
-  console.log('Debug - isConnected:', isConnected, 'address:', address, 'isFrameReady:', isFrameReady);
+  console.log('Debug - isConnected:', isConnected, 'address:', address, 'isFrameReady:', isFrameReady, 'testMode:', testMode);
 
   const { data: mintStatus } = useReadContract({
     address: CONTRACT_ADDRESS,
@@ -134,6 +135,14 @@ export default function Home() {
 
   const handleMint = async () => {
     try {
+      if (testMode && !address) {
+        // In test mode without real wallet, show a demo message
+        alert('🧪 Test Mode: In a real Farcaster frame, this would mint your POAP! The transaction would be signed automatically.');
+        setJustMinted(true);
+        setTimeout(() => setJustMinted(false), 5000);
+        return;
+      }
+      
       mint({
         address: CONTRACT_ADDRESS!,
         abi: contractABI,
@@ -212,16 +221,31 @@ export default function Home() {
               </p>
             </div>
 
-            {!isFrameReady || !address ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-                  <span className="text-yellow-800">
-                    {!isFrameReady ? 'Initializing frame...' : 'Connecting to your Farcaster wallet...'}
-                  </span>
+            {!testMode && (!isFrameReady || !address) ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-center space-y-3">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-blue-800">
+                      {!isFrameReady ? 'Initializing frame...' : 'Connecting to your Farcaster wallet...'}
+                    </span>
+                  </div>
+                  <div className="text-sm text-blue-700">
+                    <p>💡 <strong>For testing:</strong> This app is designed to work in Farcaster frames.</p>
+                    <p>In a real Farcaster frame, your wallet will connect automatically.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setTestMode(true);
+                      setFrameReady();
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    🧪 Enable Test Mode
+                  </button>
                 </div>
               </div>
-            ) : hasMinted || justMinted ? (
+            ) : (testMode || address) && (hasMinted || justMinted) ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
@@ -239,11 +263,18 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : (testMode || address) ? (
               <div className="space-y-4">
                 <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                  <div>Connected via Farcaster</div>
-                  <div className="font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
+                  <div>{testMode ? 'Test Mode Active' : 'Connected via Farcaster'}</div>
+                  <div className="font-mono">
+                    {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Test Address: 0x1234...5678'}
+                  </div>
+                  {testMode && (
+                    <div className="text-xs text-orange-600 mt-1">
+                      ⚠️ This is test mode. In a real Farcaster frame, transactions would work normally.
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleMint}
@@ -256,6 +287,12 @@ export default function Home() {
                 >
                   {isMinting ? 'Minting POAP...' : '🎉 Mint POAP'}
                 </button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="text-center text-gray-600">
+                  <p>Please connect your wallet to continue.</p>
+                </div>
               </div>
             )}
 
