@@ -20,7 +20,7 @@ struct WorkshopMetadata {
     uint256 startDate;     // Workshop start timestamp
     uint256 endDate;       // Workshop end timestamp
     string badgeType;      // "Workshop Attendee"
-    string series;         // "BORDER WORKSHOPS"
+    string series;         // "BORDERLESS WORKSHOPS"
 }
 ```
 
