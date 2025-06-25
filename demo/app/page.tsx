@@ -3,15 +3,21 @@ import React from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEffect, useState } from 'react';
 import { useAccount, useContractRead, useContractWrite, useTransaction } from 'wagmi';
-import { parseAbiItem } from 'viem';
+import { parseAbi } from 'viem';
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 
-const contractABI = [
+interface WorkshopDetails {
+  name: string;
+  startDate: bigint;
+  endDate: bigint;
+}
+
+const contractABI = parseAbi([
   'function mint() external',
   'function hasMinted(address) external view returns (bool)',
   'function getWorkshopDetails() external view returns (tuple(string name, uint256 startDate, uint256 endDate))',
-] as const;
+]) as const;
 
 export default function Home() {
   const { setFrameReady, isFrameReady } = useMiniKit();
@@ -20,22 +26,22 @@ export default function Home() {
 
   const { data: mintStatus } = useContractRead({
     address: CONTRACT_ADDRESS,
-    abi: parseAbiItem(contractABI[1]),
+    abi: contractABI,
     functionName: 'hasMinted',
     args: [address as `0x${string}`],
     enabled: isConnected && !!address,
   });
 
-  const { data: workshopDetails } = useContractRead({
+  const { data: workshopDetails } = useContractRead<typeof contractABI, 'getWorkshopDetails', WorkshopDetails>({
     address: CONTRACT_ADDRESS,
-    abi: parseAbiItem(contractABI[2]),
+    abi: contractABI,
     functionName: 'getWorkshopDetails',
     enabled: true,
   });
 
   const { write: mint, data: mintData } = useContractWrite({
     address: CONTRACT_ADDRESS,
-    abi: parseAbiItem(contractABI[0]),
+    abi: contractABI,
     functionName: 'mint',
   });
 
@@ -77,9 +83,9 @@ export default function Home() {
           <h3 className="text-xl font-semibold mb-4">Workshop Details</h3>
           {workshopDetails && (
             <div className="space-y-2">
-              <p>Name: {workshopDetails[0]}</p>
-              <p>Start Date: {new Date(Number(workshopDetails[1]) * 1000).toLocaleDateString()}</p>
-              <p>End Date: {new Date(Number(workshopDetails[2]) * 1000).toLocaleDateString()}</p>
+              <p>Name: {workshopDetails.name}</p>
+              <p>Start Date: {new Date(Number(workshopDetails.startDate) * 1000).toLocaleDateString()}</p>
+              <p>End Date: {new Date(Number(workshopDetails.endDate) * 1000).toLocaleDateString()}</p>
             </div>
           )}
         </div>
