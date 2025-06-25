@@ -1,3 +1,5 @@
+'use client';
+import React from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEffect, useState } from 'react';
 import { useAccount, useContractRead, useContractWrite, useTransaction } from 'wagmi';
