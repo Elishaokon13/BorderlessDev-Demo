@@ -7,17 +7,13 @@ import { parseAbi } from 'viem';
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 
-interface WorkshopDetails {
-  name: string;
-  startDate: bigint;
-  endDate: bigint;
-}
+type WorkshopDetails = [string, bigint, bigint];
 
 const contractABI = parseAbi([
   'function mint() external',
   'function hasMinted(address) external view returns (bool)',
   'function getWorkshopDetails() external view returns (tuple(string name, uint256 startDate, uint256 endDate))',
-]) as const;
+]);
 
 export default function Home() {
   const { setFrameReady, isFrameReady } = useMiniKit();
@@ -28,18 +24,18 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'hasMinted',
-    args: [address as `0x${string}`],
-    enabled: isConnected && !!address,
+    args: address ? [address] : undefined,
+    watch: true,
   });
 
-  const { data: workshopDetails } = useContractRead<typeof contractABI, 'getWorkshopDetails', WorkshopDetails>({
+  const { data: workshopDetails } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'getWorkshopDetails',
-    enabled: true,
+    watch: true,
   });
 
-  const { write: mint, data: mintData } = useContractWrite({
+  const { writeAsync: mint, data: mintData } = useContractWrite({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'mint',
@@ -57,13 +53,13 @@ export default function Home() {
 
   useEffect(() => {
     if (mintStatus !== undefined) {
-      setHasMinted(mintStatus);
+      setHasMinted(Boolean(mintStatus));
     }
   }, [mintStatus]);
 
   const handleMint = async () => {
     try {
-      mint();
+      await mint();
     } catch (error) {
       console.error('Error minting:', error);
     }
@@ -83,9 +79,9 @@ export default function Home() {
           <h3 className="text-xl font-semibold mb-4">Workshop Details</h3>
           {workshopDetails && (
             <div className="space-y-2">
-              <p>Name: {workshopDetails.name}</p>
-              <p>Start Date: {new Date(Number(workshopDetails.startDate) * 1000).toLocaleDateString()}</p>
-              <p>End Date: {new Date(Number(workshopDetails.endDate) * 1000).toLocaleDateString()}</p>
+              <p>Name: {workshopDetails[0]}</p>
+              <p>Start Date: {new Date(Number(workshopDetails[1]) * 1000).toLocaleDateString()}</p>
+              <p>End Date: {new Date(Number(workshopDetails[2]) * 1000).toLocaleDateString()}</p>
             </div>
           )}
         </div>
