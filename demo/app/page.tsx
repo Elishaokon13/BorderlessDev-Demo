@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
-import { useAccount, useContractRead, useContractWrite } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import confetti from 'canvas-confetti';
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}` | undefined;
 
@@ -48,103 +49,231 @@ interface WorkshopDetails {
 }
 
 export default function Home() {
-  const { setFrame, isReady: isFrameReady } = useMiniKit();
+  const { setFrameReady, isFrameReady } = useMiniKit();
   const { address, isConnected } = useAccount();
   const [hasMinted, setHasMinted] = useState<boolean>(false);
+  const [justMinted, setJustMinted] = useState<boolean>(false);
+  
+  // Debug logging
+  console.log('Debug - isConnected:', isConnected, 'address:', address, 'isFrameReady:', isFrameReady);
 
-  const { data: mintStatus } = useContractRead({
+  const { data: mintStatus } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'hasMinted',
-    args: [address],
-    enabled: isConnected && !!address,
+    args: address ? [address] : undefined,
+    query: { enabled: isFrameReady && !!address },
   });
 
-  const { data: workshopDetails } = useContractRead({
+  const { data: workshopDetails } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
     functionName: 'getWorkshopDetails',
-    enabled: true,
   }) as { data: WorkshopDetails | undefined };
 
-  const { write: mint, isLoading: isMinting, data: mintData } = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: contractABI,
-    functionName: 'mint',
-  });
+  const { writeContract: mint, isPending: isMinting, isSuccess: mintSuccess } = useWriteContract();
 
   useEffect(() => {
     if (!isFrameReady) {
-      setFrameReady(true);
+      setFrameReady();
     }
   }, [isFrameReady, setFrameReady]);
 
   useEffect(() => {
     if (mintStatus !== undefined) {
-      setHasMinted(mintStatus);
+      setHasMinted(Boolean(mintStatus));
     }
   }, [mintStatus]);
 
+  // Trigger confetti when mint is successful
+  useEffect(() => {
+    if (mintSuccess && !justMinted) {
+      setJustMinted(true);
+      
+      // Create a burst of confetti
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const colors = ['#0052FF', '#00D4FF', '#FFFFFF', '#FFD700', '#FF6B6B'];
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: colors
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: colors
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
+
+      // Big burst in the center
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: colors
+      });
+
+      // Reset after 5 seconds
+      setTimeout(() => {
+        setJustMinted(false);
+      }, 5000);
+    }
+  }, [mintSuccess, justMinted]);
+
   const handleMint = async () => {
     try {
-      await mint();
+      mint({
+        address: CONTRACT_ADDRESS!,
+        abi: contractABI,
+        functionName: 'mint',
+      });
     } catch (error) {
       console.error('Error minting:', error);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-blue-600]">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm space-y-8">
-        <h1 className="text-4xl font-bold text-center text-white mb-8">
-          BASEBALL BATCHES 001
-        </h1>
-        <h2 className="text-2xl font-semibold text-center text-white mb-12">
-          HOMEBATCH WORKSHOPS
-        </h2>
-
-        <div className="bg-white rounded-lg p-8 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Workshop Details</h3>
-          {workshopDetails && (
-            <div className="space-y-2">
-              <p>Name: {workshopDetails.name}</p>
-              <p>Start Date: {new Date(Number(workshopDetails.startDate) * 1000).toLocaleDateString()}</p>
-              <p>End Date: {new Date(Number(workshopDetails.endDate) * 1000).toLocaleDateString()}</p>
-            </div>
-          )}
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-[#0052FF]">
+      <div className="w-full max-w-2xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-white">
+            BUILD ON BASE CHALLENGE
+          </h1>
+          <h2 className="text-xl text-white/90">
+            BORDERLESS WORKSHOPS
+          </h2>
         </div>
 
-        <div className="flex flex-col items-center justify-center space-y-4">
-          {!isConnected ? (
-            // @ts-ignore: Web3Modal button is a custom element
-            <w3m-button />
-          ) : hasMinted ? (
-            <div className="bg-green-100 text-green-800 px-4 py-2 rounded-md">
-              You have already minted your POAP!
+        {/* Workshop Details Card */}
+        <div className="bg-white rounded-xl p-6 shadow-lg">
+          <h3 className="text-xl font-semibold mb-4 text-gray-800">Workshop Details</h3>
+          {workshopDetails ? (
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Event:</span>
+                <span className="text-gray-800">{workshopDetails.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Start Date:</span>
+                <span className="text-gray-800">
+                  {new Date(Number(workshopDetails.startDate) * 1000).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">End Date:</span>
+                <span className="text-gray-800">
+                  {new Date(Number(workshopDetails.endDate) * 1000).toLocaleDateString()}
+                </span>
+              </div>
             </div>
           ) : (
-            <button
-              onClick={handleMint}
-              disabled={isMinting}
-              aria-label="Mint your POAP"
-              className={`px-6 py-3 rounded-lg text-white font-semibold ${
-                isMinting ? 'bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {isMinting ? 'Minting...' : 'Mint POAP'}
-            </button>
-          )}
-
-          {mintData && (
-            <div className="bg-green-100 text-green-800 px-4 py-2 rounded-md">
-              Successfully minted your POAP!
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Event:</span>
+                <span className="text-gray-800">BUILD ON BASE CHALLENGE - BORDERLESS WORKSHOPS</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Start Date:</span>
+                <span className="text-gray-800">June 16, 2025</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">End Date:</span>
+                <span className="text-gray-800">June 25, 2025</span>
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                Loading contract data...
+              </div>
             </div>
           )}
         </div>
-      </div>
 
-      <div className="fixed bottom-4 left-0 w-full text-center text-white text-sm">
-        Powered by Base Minikit
+        {/* Action Section */}
+        <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="text-center space-y-6">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Claim Your POAP
+              </h3>
+              <p className="text-gray-600">
+                Proof of Attendance Protocol - One per address, non-transferable
+              </p>
+            </div>
+
+            {!isFrameReady || !address ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                  <span className="text-yellow-800">
+                    {!isFrameReady ? 'Initializing frame...' : 'Connecting to your Farcaster wallet...'}
+                  </span>
+                </div>
+              </div>
+            ) : hasMinted || justMinted ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-green-800 font-medium">
+                    {justMinted ? '🎉 POAP Minted Successfully! 🎉' : 'You have already claimed your POAP!'}
+                  </span>
+                </div>
+                {justMinted && (
+                  <div className="mt-3 text-center">
+                    <p className="text-green-700 text-sm animate-pulse">
+                      Congratulations! Your POAP is now in your wallet! 🚀
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                  <div>Connected via Farcaster</div>
+                  <div className="font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
+                </div>
+                <button
+                  onClick={handleMint}
+                  disabled={isMinting}
+                  className={`w-full py-4 px-6 rounded-lg font-semibold text-lg transition-colors ${
+                    isMinting
+                      ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                      : 'bg-[#0052FF] hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {isMinting ? 'Minting POAP...' : '🎉 Mint POAP'}
+                </button>
+              </div>
+            )}
+
+            {isMinting && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-blue-800">Transaction pending...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-white/70 text-sm">
+          Powered by Base Minikit
+        </div>
       </div>
     </main>
   );

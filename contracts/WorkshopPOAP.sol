@@ -40,14 +40,14 @@ contract WorkshopPOAP is ERC721, Ownable {
         emit MintAttempted(msg.sender, true, "Successfully minted POAP");
     }
     
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal override {
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override
+        returns (address)
+    {
+        address from = _ownerOf(tokenId);
         require(from == address(0) || to == address(0), "Token transfer is not allowed");
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+        return super._update(to, tokenId, auth);
     }
     
     function getWorkshopDetails() external view returns (WorkshopMetadata memory) {
@@ -55,7 +55,7 @@ contract WorkshopPOAP is ERC721, Ownable {
     }
     
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireMinted(tokenId);
+        require(_ownerOf(tokenId) != address(0), "ERC721: URI query for nonexistent token");
         
         // Return a JSON metadata string
         return string(
